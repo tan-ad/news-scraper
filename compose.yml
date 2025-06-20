@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: news_user
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: news_db
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # UI
+
+  backend:
+    build:
+      context: ./backend
+    volumes:
+      - ./backend:/app        # for live-reload in dev
+    depends_on:
+      - db
+      - rabbitmq
+    environment:
+      DATABASE_URL: postgresql://news_user:secret@db:5432/news_db
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    environment:
+      VITE_API_URL: http://localhost:8000
+
+volumes:
+  db_data:
